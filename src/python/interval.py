@@ -9,15 +9,15 @@ class Interval(object):
     """
     Represents a one-dimensional interval and sets up the basic operations
     with intervals by overloading the operators +, -, *, / and **.
-    The basic elementary functions over intervals are implemented. 
-    Default floats are `mpfr`, which is loaded internally, in order to use some 
+    The basic elementary functions over intervals are implemented.
+    Default floats are `mpfr`, which is loaded internally, in order to use some
     elementary functions with extended precision. Directed rounding is implemented.
 
     Many ideas are taken from the book *Validated Numerics* by Warwick Tucker.
     """
 
     def __init__(self, a, b=None):
-        """ 
+        """
         We define an interval by fixing its lower (lo) and upper (hi) limits,
         including *directed rounding*: the lower limit is rounded down, the upper limit is rounded up.
 
@@ -32,20 +32,20 @@ class Interval(object):
         -------
         An interval: self.lo and self.hi
 
-        Irrespective of the magnitude of a and b, the returned value satisfies 
+        Irrespective of the magnitude of a and b, the returned value satisfies
         self.lo <= self.hi_half
 
         """
         if b is None:       # single argument
 
-            try a[0]:       # if a is a tuple, list etc.
-                a, b = a    # then unpack a
+            try:
+              a, b = a      # try to unpack a (check if it's a tuple etc.)
 
             except:
                 b = a       # else create a thin interval
 
         elif (b < a):       # limits "wrong way round"
-            
+
             a, b = b, a
 
             # (Note that this is *not* the right approach for so-called "extended IA"
@@ -61,7 +61,7 @@ class Interval(object):
             #    a = mpfr( str(a) )
             ctx.round = RoundDown
             a = mpfr( str(a) )   # convert to mpfr
-        
+
         if not isinstance(b, mpfr_type) and mem.libmath==gmpy2:
             #with gmpy2.local_context(gmpy2.get_context(), round=RoundUp) as ctx:
             #    b = mpfr( str(b) )
@@ -69,13 +69,13 @@ class Interval(object):
             b = mpfr( str(b) )
 
         self.lo, self.hi = a, b
-        
+
 
     # Formatting functions:
     #
     def __repr__(self):
         return "Interval[{}, {}]".format(repr(self.lo),repr(self.hi))
-    
+
     def __str__(self):
         return "[{},{}]".format(repr(self.lo),repr(self.hi))
 
@@ -99,12 +99,12 @@ class Interval(object):
 
         ctx.round = RoundDown
         lower = self.lo + other.lo
-        
+
         ctx.round = RoundUp
         upper = self.hi + other.hi
-        
+
         return Interval( lower, upper )
-        
+
     def __radd__(self, other):
         return self + other
 
@@ -116,12 +116,12 @@ class Interval(object):
 
         ctx.round = RoundDown
         lower = self.lo - other.hi
-        
+
         ctx.round = RoundUp
         upper = self.hi - other.lo
-        
+
         return Interval( lower, upper )
-                
+
     def __rsub__(self, other):
         return -(self - other)
 
@@ -131,32 +131,34 @@ class Interval(object):
 
     def __neg__(self):
         """
-        El negativo de un Interval
+        Unary negative
         """
         return Interval( -self.hi, -self.lo )
-        
+
 
     def __mul__(self, other):
         """
-        Se implementa la multiplicación usando `multFast`
+        Multiplication: use the naive version with directed rounding
         """
 
         other = self.make_interval(other)
         return self._mult3(other)
-        
+
     def __rmul__(self, other):
         return self * other
 
 
     def _mult1(self,other):
-        """ Algorítmo de la multiplicación ingenuo """
-        S = [ self.lo*other.lo, self.lo*other.hi, 
+        """ Naive multiplication; does not yet have directed rounding """
+
+        S = [ self.lo*other.lo, self.lo*other.hi,
               self.hi*other.lo, self.hi*other.hi ]
         return Interval( min(S), max(S) )
 
     def _mult2(self,other):
         """
-        Algorítmo de la multiplicación que distingue los nueve casos posibles
+        Multiplication algorithm considering explicitly the nine possible cases
+        (No directed rounding)
         """
         if (self.lo >= 0.0 and other.lo >= 0.0):
             return Interval( self.lo*other.lo, self.hi*other.hi )
@@ -182,21 +184,22 @@ class Interval(object):
             return Interval( min(S2), max(S1) )
 
     def _mult3(self,other):
-        """ Algorítmo de la multiplicación ingenuo; incorpora el redonde """
+        """ Naive multiplication with directed rounding """
 
         ctx.round = RoundDown
         S_lower = [ self.lo*other.lo, self.lo*other.hi, self.hi*other.lo, self.hi*other.hi ]
+        S1 = min(S_lower)
 
         ctx.round = RoundUp
         S_upper = [ self.lo*other.lo, self.lo*other.hi, self.hi*other.lo, self.hi*other.hi ]
+        S2 = max(S_upper)
 
-        S1, S2 = min( S_lower ), max( S_upper )
         return Interval( S1, S2 )
 
 
     def __div__(self, other):
         """
-        División de Intervals: producto del primero por el recíproco del segundo
+        Division: product of the first by the reciprocal of the second
         """
         other = self.make_interval(other)
 
@@ -213,7 +216,7 @@ class Interval(object):
 
     def reciprocal(self):
         """
-        Esto define el recíproco de un Interval
+        Reciprocal of an interval
         """
         inf = calc_inf()
 
@@ -222,25 +225,25 @@ class Interval(object):
             lower = 1.0/self.hi
         except:
             lower = -inf
-            
+
         ctx.round = RoundUp
         try:
             upper = 1.0/self.lo
         except:
             upper = inf
-            
+
         if self.strictly_contains( 0.0 ):
             lower = -inf
             upper = inf
             print "\nInterval {} in denominator contains 0.".format(self)
-            
+
         return Interval( lower, upper )
 
 
     def __contains__(self, x):
         """
-        Esto verifica si el Interval contiene (o no) un número real;
-        implementa al operador `in`
+        Implements the `in` operator to check if the number x lies in the interval
+        Also works if x is an interval to check if subset
         """
 
         if isinstance(x, Interval):
@@ -250,21 +253,23 @@ class Interval(object):
 
 
     def strictly_contains(self, x):
+        """ Version of `in` with strict inequalities """
 
         if isinstance(x, Interval):
             return self.lo < x.lo and x.hi < self.hi
 
         return self.lo < x < self.hi
-        
 
-    # pow, rpow, abs, sin, cos, ...
+
+    # Elementary mathematical functions: pow, rpow, abs, sin, cos, exp, etc.
+    #
     def exp(self):
         """
-        Exponencial de un Interval: 'self.exp()'
+        Exponential
         """
         ctx.round = RoundDown
         lower = exp( self.lo )
-        
+
         ctx.round = RoundUp
         upper = exp( self.hi )
 
@@ -279,7 +284,7 @@ class Interval(object):
         se calcula el logaritmo de la intersección del Interval con el dominio
         natural del logaritmo, i.e., [0,+inf].
         """
-        
+
         inf = calc_inf()
         domainNatural = Interval(0, inf)
         if 0 in self:
@@ -287,13 +292,13 @@ class Interval(object):
 
             print ("\nWARNING:\n"
                    "Interval {} contains 0 or negative numbers.\n".format(self) )
-            
+
             print ("Restricting to the intersection with the natural domain of log(x),\n"
                    "i.e. {}\n".format(intervalRestricted) )
-                        
+
             ctx.round = RoundDown
             lower = log( intervalRestricted.lo )
-            
+
             ctx.round = RoundUp
             upper = log( intervalRestricted.hi )
 
@@ -306,7 +311,7 @@ class Interval(object):
         else:
             ctx.round = RoundDown
             lower = log( self.lo )
-            
+
             ctx.round = RoundUp
             upper = log( self.hi )
 
@@ -323,13 +328,13 @@ class Interval(object):
 
             print ("\nWARNING:\n"
                    "Interval {} contains 0 or negative numbers.\n".format(self) )
-            
+
             print ("Restricting to the intersection with the natural domain of sqrt(x),\n"
                    "i.e. {}\n".format(intervalRestricted) )
-            
+
             ctx.round = RoundDown
             lower = sqrt( intervalRestricted.lo )
-            
+
             ctx.round = RoundUp
             upper = sqrt( intervalRestricted.hi )
 
@@ -343,7 +348,7 @@ class Interval(object):
         else:
             ctx.round = RoundDown
             lower = sqrt( self.lo )
-            
+
             ctx.round = RoundUp
             upper = sqrt( self.hi )
 
@@ -370,7 +375,7 @@ class Interval(object):
                     # even exponent
                     ctx.round = RoundDown
                     lower = (self.mig())**exponent
-                    
+
                     ctx.round = RoundUp
                     upper = (self.mag())**exponent
                     return Interval( lower, upper )
@@ -379,7 +384,7 @@ class Interval(object):
                     # odd exponent
                     ctx.round = RoundDown
                     lower = self.lo**exponent
-                    
+
                     ctx.round = RoundUp
                     upper = self.hi**exponent
                     return Interval( lower, upper )
@@ -403,10 +408,10 @@ class Interval(object):
 
                     ctx.round = RoundDown
                     lower = mpfr( '0.0' )**exponent
-                    
+
                     ctx.round = RoundUp
                     upper = elf.hi**exponent
-                    
+
                     return Interval( lower, upper )
 
                 elif 0 > self:
@@ -415,10 +420,10 @@ class Interval(object):
                 else:
                     ctx.round = RoundDown
                     lower = min( self.lo**exponent, self.hi**exponent )
-                    
+
                     ctx.round = RoundUp
                     upper = max( self.lo**exponent, self.hi**exponent )
-                    
+
                     return Interval( lower, upper )
 
             else:
@@ -442,64 +447,64 @@ class Interval(object):
         # Check the specific case:
         if xhig > xlow + dospi:
             return whole_range
-        
+
         # within 1 full period of sin(x); 20 cases
         # some abreviations
         lo_mod2pi = xlow % dospi
         hi_mod2pi = xhig % dospi
         lo_quarter = mem.libmath.floor( lo_mod2pi / pi_half )
         hi_quarter = mem.libmath.floor( hi_mod2pi / pi_half )
-        
+
         if lo_quarter == hi_quarter:
             if lo_mod2pi <= hi_mod2pi:
-                
+
                 ctx.round = RoundDown
                 sin_xlo = sin( xlow )
-                
+
                 ctx.round = RoundUp
                 sin_xhi = sin( xhig )
 
                 return Interval( sin_xlo, sin_xhi )
-                
+
             else:
                 return whole_range
 
         else:
-            if (( lo_quarter == 3 and hi_quarter==0 ) or 
+            if (( lo_quarter == 3 and hi_quarter==0 ) or
                 ( lo_quarter == 1 and hi_quarter==2 )):
-                
+
                 ctx.round = RoundDown
                 sin_xlo = sin( xlow )
-                
+
                 ctx.round = RoundUp
                 sin_xhi = sin( xhig )
-                
+
                 return Interval( sin_xlo, sin_xhi )
-            
-            elif (( lo_quarter == 0 or lo_quarter==3 ) and 
+
+            elif (( lo_quarter == 0 or lo_quarter==3 ) and
                   ( hi_quarter==1 or hi_quarter==2 )):
-                
+
                 ctx.round = RoundDown
                 sin_xlo = sin( xlow )
                 sin_xhi = sin( xhig )
                 min_sin = min( sin_xlo, sin_xhi )
-                
+
                 return Interval( min_sin, 1.0 )
-            
-            elif (( lo_quarter == 1 or lo_quarter==2 ) and 
+
+            elif (( lo_quarter == 1 or lo_quarter==2 ) and
                   ( hi_quarter==3 or hi_quarter==0 )):
-                
+
                 ctx.round = RoundUp
                 sin_xlo = sin( xlow )
                 sin_xhi = sin( xhig )
                 max_sin = max( sin_xlo, sin_xhi )
-              
+
                 return Interval( -1.0, max_sin )
-            
-            elif (( lo_quarter == 0 and hi_quarter==3 ) or 
+
+            elif (( lo_quarter == 0 and hi_quarter==3 ) or
                   ( lo_quarter == 2 and hi_quarter==1 )):
                 return whole_range
-            
+
             else:
                 # This should be never reached!
                 raise NotImplementedError( ('SOMETHING WENT WRONG.\n'
@@ -519,63 +524,63 @@ class Interval(object):
         # Check the specific case:
         if xhig > xlow + dospi:
             return whole_range
-        
+
         # within 1 full period of sin(x); 20 cases
         # some abreviations
         lo_mod2pi = xlow % dospi
         hi_mod2pi = xhig % dospi
         lo_quarter = mem.libmath.floor( lo_mod2pi / pi_half )
         hi_quarter = mem.libmath.floor( hi_mod2pi / pi_half )
-        
+
         if lo_quarter == hi_quarter:
             if lo_mod2pi <= hi_mod2pi:
 
                 ctx.round = RoundDown
                 cos_xhi = cos( xhig )
-                
+
                 ctx.round = RoundUp
                 cos_xlo = cos( xlow )
-                
+
                 return Interval( cos_xhi, cos_xlo )
             else:
                 return whole_range
 
         else:
-            if (( lo_quarter == 2 and hi_quarter==3 ) or 
+            if (( lo_quarter == 2 and hi_quarter==3 ) or
                 ( lo_quarter == 0 and hi_quarter==1 )):
-                
+
                 ctx.round = RoundDown
                 cos_xhi = cos( xhig )
-                
+
                 ctx.round = RoundUp
                 cos_xlo = cos( xlow )
-                
+
                 return Interval( cos_xhi, cos_xlo )
-            
-            elif (( lo_quarter == 2 or lo_quarter==3 ) and 
+
+            elif (( lo_quarter == 2 or lo_quarter==3 ) and
                   ( hi_quarter==0 or hi_quarter==1 )):
-               
+
                 ctx.round = RoundDown
                 cos_xlo = cos( xlow )
                 cos_xhi = cos( xhig )
                 min_cos = min( cos_xlo, cos_xhi )
-               
+
                 return Interval( min_cos, 1.0 )
-            
-            elif (( lo_quarter == 0 or lo_quarter==1 ) and 
+
+            elif (( lo_quarter == 0 or lo_quarter==1 ) and
                   ( hi_quarter==2 or hi_quarter==3 )):
-            
+
                 ctx.round = RoundUp
                 cos_xlo = cos( xlow )
                 cos_xhi = cos( xhig )
                 max_cos = max( cos_xlo, cos_xhi )
-            
+
                 return Interval( -1.0, max_cos )
-            
-            elif (( lo_quarter == 3 and hi_quarter==2 ) or 
+
+            elif (( lo_quarter == 3 and hi_quarter==2 ) or
                   ( lo_quarter == 1 and hi_quarter==0 )):
                 return whole_range
-            
+
             else:
                 raise NotImplementedError( ('SOMETHING WENT WRONG.\n'
                     'This should have never been reached') )
@@ -601,10 +606,10 @@ class Interval(object):
         hi_modpi = xhig % pi
         lo_half = mem.libmath.floor( lo_modpi / pi_half )
         hi_half = mem.libmath.floor( hi_modpi / pi_half )
-       
+
         ctx.round = RoundDown
         tan_xlo = tan( xlow )
-        
+
         ctx.round = RoundUp
         tan_xhi = tan( xhig )
 
@@ -641,7 +646,7 @@ class Interval(object):
 
     def __le__(self, other):
         """
-        Se checa el ordenamiento de los Intervals (ver Tucker); 
+        Se checa el ordenamiento de los Intervals (ver Tucker);
         operador '<='
         """
         try:
@@ -653,8 +658,8 @@ class Interval(object):
         return self >= other
 
     def __ge__(self, other):
-        """ 
-        Se checa el ordenamiento de los Intervals (ver Tucker); 
+        """
+        Se checa el ordenamiento de los Intervals (ver Tucker);
         operador '>='
         """
         try:
@@ -667,7 +672,7 @@ class Interval(object):
 
     def __lt__(self, other):
         """
-        Se checa el ordenamiento de los Intervals (ver Tucker); 
+        Se checa el ordenamiento de los Intervals (ver Tucker);
         operador '<'
         """
         try:
@@ -680,7 +685,7 @@ class Interval(object):
 
     def __gt__(self, other):
         """
-        Se checa el ordenamiento de los Intervals (ver Tucker); 
+        Se checa el ordenamiento de los Intervals (ver Tucker);
         operador '>'
         """
         try:
@@ -691,7 +696,7 @@ class Interval(object):
     def __rgt__(self, other):
         return self < other
 
-    # Las operaciones entre Intervals vistas como conjuntos 
+    # Las operaciones entre Intervals vistas como conjuntos
     def _is_empty_intersection(self, other):
         """Verifica si la intersección de los Intervals es vacía"""
         return self.hi < other.lo or other.hi < self.lo
@@ -703,7 +708,7 @@ class Interval(object):
         other = self.make_interval(other)
 
         if self._is_empty_intersection(other):
-            print ("Intersection is empty:\n" 
+            print ("Intersection is empty:\n"
                    "Intervals {} and {} are disjoint".format(self,other) )
             return
 
@@ -722,7 +727,7 @@ class Interval(object):
         other = self.make_interval(other)
 
         if self._is_empty_intersection(other):
-            print ("Union yields no connected interval:\n" 
+            print ("Union yields no connected interval:\n"
                    "Intervals {} and {} are disjoint".format(self,other) )
         else:
             return self.hull(other)
@@ -817,7 +822,7 @@ def split_interval( x, num_divisions=1 ):
         num_divisions = 1
 
     edge_points = np.linspace(x.lo, x.hi, num_divisions+1)
-    splited_intervals = [Interval(a, b) for (a,b) in 
+    splited_intervals = [Interval(a, b) for (a,b) in
                          zip(edge_points[0:num_divisions+1],edge_points[1:num_divisions+2]) ]
 
     return splited_intervals
@@ -855,7 +860,7 @@ def plot_interval_f( fun, x, pow2=0, num_points=101 ):
         # Se calculan las extensiones de la función sobre el Interval, usando los subIntervals
         rango_total = range_interval_f( fun, subdivided_intervals )
         print "Rango_tot (N={}) = {}".format(num,rango_total)
-        
+
         # Hago el dibujo
         for x1 in subdivided_intervals:
             low = float(x1.lo)
@@ -864,11 +869,10 @@ def plot_interval_f( fun, x, pow2=0, num_points=101 ):
             xa1 = np.array([low, low, high, high])
             ya1 = np.array([float(Ffun.lo), float(Ffun.hi), float(Ffun.hi), float(Ffun.lo) ])
             plt.fill( xa1, ya1, 'b', alpha=fact_alfa )
-    
+
     low = float(x.lo)
     high = float(x.hi)
     xx = np.linspace(low,high,num_points)
     yy = fun(xx)
     plt.plot( xx, yy, 'red')
-    return 
-
+    return
