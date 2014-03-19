@@ -278,17 +278,18 @@ class Interval(object):
 
     def log(self):
         """
-        Logaritmo de un Interval: 'self.log()'
+        Logarithm
 
-        NOTA: Si el Interval contiene al 0, pero no es estrictamente negativo,
-        se calcula el logaritmo de la intersección del Interval con el dominio
-        natural del logaritmo, i.e., [0,+inf].
+        Note: If the Interval contains 0, but is not strictly negative,
+        we calculate the logarithm of the intersection of the Interval with the natural domain of
+        log, i.e. [0, +inf].
         """
 
         inf = calc_inf()
-        domainNatural = Interval(0, inf)
+        naturalDomain = Interval(0, inf)
+
         if 0 in self:
-            intervalRestricted = self.intersection( domainNatural )
+            intervalRestricted = self.intersection( naturalDomain )
 
             print ("\nWARNING:\n"
                    "Interval {} contains 0 or negative numbers.\n".format(self) )
@@ -319,12 +320,13 @@ class Interval(object):
 
     def sqrt(self):
         """An implementation of the square root"""
+
         inf = calc_inf()
-        domainNatural = Interval(0, inf)
+        naturalDomain = Interval(0, inf)
 
         if 0 in self:
 
-            intervalRestricted = self.intersection( domainNatural )
+            intervalRestricted = self.intersection( naturalDomain )
 
             print ("\nWARNING:\n"
                    "Interval {} contains 0 or negative numbers.\n".format(self) )
@@ -358,14 +360,14 @@ class Interval(object):
 
     def __pow__(self, exponent):
         """
-        Se calcula la potencia de un Interval; operador '**'
+        Power -- implements the `**` operator
         """
         inf = calc_inf()
 
         if isinstance( exponent, Interval ):
             # here exponent is an interval
-            tmp_dummy = exponent * self.log()
-            return tmp_dummy.exp()
+            temp = exponent * self.log()
+            return temp.exp()
 
         # exponent is a number (int, float, mpfr, ...)
         if exponent == int(exponent):
@@ -396,10 +398,10 @@ class Interval(object):
 
         else:
             # exponent is a generic float
-            domainNatural = Interval(0, inf)
+            naturalDomain = Interval(0, inf)
             if exponent >= 0:
                 if 0 in self:
-                    intervalRestricted = self.intersection( domainNatural )
+                    intervalRestricted = self.intersection( naturalDomain )
 
                     print "\nWARNING: Interval {} contains 0.\n".format(self)
 
@@ -436,24 +438,25 @@ class Interval(object):
 
     def sin(self):
         """
-        Se calcula el seno de un Interval
+        Sine
         """
+
         pi = calc_pi()
-        pi_half = 0.5 * pi
-        dospi = 2.0 * pi
+        half_pi = 0.5 * pi
+        two_pi = 2.0 * pi
         xlow, xhig = self.lo, self.hi
         whole_range = Interval(-1.0,1.0)
 
         # Check the specific case:
-        if xhig > xlow + dospi:
+        if xhig > xlow + two_pi:
             return whole_range
 
         # within 1 full period of sin(x); 20 cases
         # some abreviations
-        lo_mod2pi = xlow % dospi
-        hi_mod2pi = xhig % dospi
-        lo_quarter = mem.libmath.floor( lo_mod2pi / pi_half )
-        hi_quarter = mem.libmath.floor( hi_mod2pi / pi_half )
+        lo_mod2pi = xlow % two_pi
+        hi_mod2pi = xhig % two_pi
+        lo_quarter = mem.libmath.floor( lo_mod2pi / half_pi )
+        hi_quarter = mem.libmath.floor( hi_mod2pi / half_pi )
 
         if lo_quarter == hi_quarter:
             if lo_mod2pi <= hi_mod2pi:
@@ -513,24 +516,24 @@ class Interval(object):
 
     def cos(self):
         """
-        Se calcula el coseno de un Interval
+        Cosine
         """
         pi = calc_pi()
-        pi_half = 0.5 * pi
-        dospi = 2.0 * pi
+        half_pi = 0.5 * pi
+        two_pi = 2.0 * pi
         xlow, xhig = self.lo, self.hi
         whole_range = Interval(-1.0,1.0)
 
         # Check the specific case:
-        if xhig > xlow + dospi:
+        if xhig > xlow + two_pi:
             return whole_range
 
         # within 1 full period of sin(x); 20 cases
         # some abreviations
-        lo_mod2pi = xlow % dospi
-        hi_mod2pi = xhig % dospi
-        lo_quarter = mem.libmath.floor( lo_mod2pi / pi_half )
-        hi_quarter = mem.libmath.floor( hi_mod2pi / pi_half )
+        lo_mod2pi = xlow % two_pi
+        hi_mod2pi = xhig % two_pi
+        lo_quarter = mem.libmath.floor( lo_mod2pi / half_pi )
+        hi_quarter = mem.libmath.floor( hi_mod2pi / half_pi )
 
         if lo_quarter == hi_quarter:
             if lo_mod2pi <= hi_mod2pi:
@@ -588,11 +591,11 @@ class Interval(object):
 
     def tan(self):
         """
-        Se calcula la tangente de un Interval
+        Tangent
         """
         inf = calc_inf()
         pi = calc_pi()
-        pi_half = 0.5 * pi
+        half_pi = 0.5 * pi
         xlow, xhig = self.lo, self.hi
         whole_range = Interval(-inf,inf)
 
@@ -604,8 +607,8 @@ class Interval(object):
         # some abreviations
         lo_modpi = xlow % pi
         hi_modpi = xhig % pi
-        lo_half = mem.libmath.floor( lo_modpi / pi_half )
-        hi_half = mem.libmath.floor( hi_modpi / pi_half )
+        lo_half = mem.libmath.floor( lo_modpi / half_pi )
+        hi_half = mem.libmath.floor( hi_modpi / half_pi )
 
         ctx.round = RoundDown
         tan_xlo = tan( xlow )
@@ -628,92 +631,67 @@ class Interval(object):
             return whole_range
 
 
-    # Las relaciones que sirven para checar el orden parcial
+    # Partial order relations
+    #
+
     def __eq__(self, other):
-        """
-        Aquí se checa la igualdad de dos Intervals; operador '=='
-        """
-        try:
-            return self.lo == other.lo and self.hi == other.hi
-        except:
-            return self == Interval(other)
+        """ Equality: `==` operator """
+        other = make_interval(other)
+        return self.lo == other.lo and self.hi == other.hi
 
     def __ne__(self, other):
-        """
-        Aquí se checa la NO igualdad de dos Intervals; operador '!='
-        """
+        """ Inequality; `!=` operator """
         return not self == other
 
     def __le__(self, other):
-        """
-        Se checa el ordenamiento de los Intervals (ver Tucker);
-        operador '<='
-        """
-        try:
-            return self.lo <= other.lo and self.hi <= other.hi
-        except:
-            return self <= Interval(other)
+        """ Inequality `<=` """
+        other = make_interval(other)
+        return self.lo <= other.lo and self.hi <= other.hi
 
     def __rle__(self, other):
         return self >= other
 
     def __ge__(self, other):
-        """
-        Se checa el ordenamiento de los Intervals (ver Tucker);
-        operador '>='
-        """
-        try:
-            return self.lo >= other.lo and self.hi >= other.hi
-        except:
-            return self >= Interval(other)
+        """ Inequality `>=` """
+        other = make_interval(other)
+        return self.lo >= other.lo and self.hi >= other.hi
 
     def __rge__(self, other):
         return self <= other
 
     def __lt__(self, other):
-        """
-        Se checa el ordenamiento de los Intervals (ver Tucker);
-        operador '<'
-        """
-        try:
-            return self.lo < other.lo and self.hi < other.hi
-        except:
-            return self < Interval(other)
+        """ Inequality `<` """
+        return self.lo < other.lo and self.hi < other.hi
 
     def __rlt__(self, other):
         return self > other
 
     def __gt__(self, other):
-        """
-        Se checa el ordenamiento de los Intervals (ver Tucker);
-        operador '>'
-        """
-        try:
-            return self.lo > other.lo and self.hi > other.hi
-        except:
-            return self > Interval(other)
+        """ Inequality `>` """
+        other = make_interval(other)
+        return self.lo > other.lo and self.hi > other.hi
 
     def __rgt__(self, other):
         return self < other
 
-    # Las operaciones entre Intervals vistas como conjuntos
+
+    # Operations between intervals viewed as sets
+    #
     def _is_empty_intersection(self, other):
-        """Verifica si la intersección de los Intervals es vacía"""
+        """ Check if the intersection between intervals is empty """
         return self.hi < other.lo or other.hi < self.lo
 
     def intersection(self, other):
-        """
-        Intersección de Intervals
-        """
+        """ Intersection """
+
         other = self.make_interval(other)
 
         if self._is_empty_intersection(other):
             print ("Intersection is empty:\n"
                    "Intervals {} and {} are disjoint".format(self,other) )
             return
-
-        else:
-            return Interval( max(self.lo,other.lo), min(self.hi,other.hi) )
+            
+        return Interval( max(self.lo,other.lo), min(self.hi,other.hi) )
 
     def hull(self, other):
         """Envoltura/casco de dos Intervals"""
