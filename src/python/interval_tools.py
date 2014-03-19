@@ -49,12 +49,12 @@ def plot_interval_f( fun, x, pow2=0, num_points=101 ):
     The original function is plotted at num_points points
     """
     num_intervals = [ 2**p for p in range(pow2+1) ]
-    fact_alfa = 0.3 # num*1.0/num_intervals[-1]   # for plotting
 
     # plt.figure()
     # plt.subplot(1, 1, 1)
 
     for num in num_intervals:
+        fact_alfa = num * 1.0/num_intervals[-1]   # for plotting
 
         subdivided_intervals = split_interval( x, num )
         total_range = range_interval_f( fun, subdivided_intervals )

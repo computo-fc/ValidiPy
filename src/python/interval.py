@@ -372,15 +372,16 @@ class Interval(object):
         """
         inf = calc_inf()
 
-        if not 0 > self:        # not wholly negative
+        if self > 0:        # not wholly negative
 
             exponent = self.make_interval(exponent)
             return( exp(exponent * log(self)) )   # seems to work! EXCEPT for pure negative intervals
 
 
-        else:
+        elif 0 > self:
             if not exponent == int(exponent):  # noninteger exponent not allowed
                 print ("Negative intervals cannot be raised to a fractional power")
+                return  # Should throw error
 
 
         #
@@ -433,7 +434,7 @@ class Interval(object):
                     return Interval( lower, upper )
 
                 elif 0 > self:
-                    print ("Negative intervals can not be raised to a fractional power")
+                    print ("Negative intervals cannot be raised to a fractional power")
 
                 else:
                     ctx.round = RoundDown
