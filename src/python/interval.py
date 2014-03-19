@@ -372,21 +372,28 @@ class Interval(object):
         """
         inf = calc_inf()
 
+        if not 0 > self:        # not wholly negative
 
-        return( exp(exponent * log(self)) )   # seems to work!
+            exponent = self.make_interval(exponent)
+            return( exp(exponent * log(self)) )   # seems to work! EXCEPT for pure negative intervals
 
 
-        if isinstance( exponent, Interval ):
-            # here exponent is an interval
+        else:
+            if not exponent == int(exponent):  # noninteger exponent not allowed
+                print ("Negative intervals cannot be raised to a fractional power")
 
-            return( exp(exponent * log(self)) )
 
-        # exponent is a number (int, float, mpfr, ...)
-        if exponent == int(exponent):
-            # exponent is an integer
+        #
+        #
+        # if isinstance( exponent, Interval ):
+        #     # here exponent is an interval
+        #
+        #     return( exp(exponent * log(self)) )
+
+
+        if exponent == int(exponent):    # exponent is an integer
             if exponent >= 0:
-                if exponent%2 == 0:
-                    # even exponent
+                if exponent%2 == 0:     # even exponent
                     ctx.round = RoundDown
                     lower = (self.mig())**exponent
 
@@ -394,8 +401,7 @@ class Interval(object):
                     upper = (self.mag())**exponent
                     return Interval( lower, upper )
 
-                else:
-                    # odd exponent
+                else:                # odd exponent
                     ctx.round = RoundDown
                     lower = self.lo**exponent
 
@@ -403,13 +409,11 @@ class Interval(object):
                     upper = self.hi**exponent
                     return Interval( lower, upper )
 
-            else:
-                # exponent < 0
+            else:   # exponent < 0
                 result = self**(-exponent)
                 return result.reciprocal()
 
-        else:
-            # exponent is a generic float
+        else:  # exponent is a generic float
             naturalDomain = Interval(0, inf)
             if exponent >= 0:
                 if 0 in self:
@@ -648,7 +652,7 @@ class Interval(object):
 
     def __eq__(self, other):
         """ Equality: `==` operator """
-        other = make_interval(other)
+        other = self.make_interval(other)
         return self.lo == other.lo and self.hi == other.hi
 
     def __ne__(self, other):
@@ -657,7 +661,7 @@ class Interval(object):
 
     def __le__(self, other):
         """ Inequality `<=` """
-        other = make_interval(other)
+        other = self.make_interval(other)
         return self.lo <= other.lo and self.hi <= other.hi
 
     def __rle__(self, other):
@@ -665,7 +669,7 @@ class Interval(object):
 
     def __ge__(self, other):
         """ Inequality `>=` """
-        other = make_interval(other)
+        other = self.make_interval(other)
         return self.lo >= other.lo and self.hi >= other.hi
 
     def __rge__(self, other):
@@ -673,6 +677,7 @@ class Interval(object):
 
     def __lt__(self, other):
         """ Inequality `<` """
+        other = self.make_interval(other)
         return self.lo < other.lo and self.hi < other.hi
 
     def __rlt__(self, other):
@@ -680,7 +685,7 @@ class Interval(object):
 
     def __gt__(self, other):
         """ Inequality `>` """
-        other = make_interval(other)
+        other = self.make_interval(other)
         return self.lo > other.lo and self.hi > other.hi
 
     def __rgt__(self, other):
