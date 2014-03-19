@@ -372,10 +372,14 @@ class Interval(object):
         """
         inf = calc_inf()
 
+
+        return( exp(exponent * log(self)) )   # seems to work!
+
+
         if isinstance( exponent, Interval ):
             # here exponent is an interval
-            temp = exponent * self.log()
-            return temp.exp()
+
+            return( exp(exponent * log(self)) )
 
         # exponent is a number (int, float, mpfr, ...)
         if exponent == int(exponent):
