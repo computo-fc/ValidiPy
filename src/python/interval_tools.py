@@ -3,6 +3,8 @@
 import numpy as np
 from interval import *
 
+from matplotlib import pyplot as plt
+
 
 def random_interval( infimum=-10.0, supremum=10.0 ):
     num1a = np.random.uniform( infimum, supremum )
