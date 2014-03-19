@@ -1,5 +1,9 @@
 # -*- coding:utf-8 -*-
 
+# Set up "global" functions sin, cos etc. such that they work on any object x for which x.sin() is defined
+# or default to a number
+
+
 import gmpy2
 from gmpy2 import mpz, mpq, mpfr#, mpc
 from gmpy2 import RoundDown, RoundUp
@@ -8,6 +12,9 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 class MemGlobal(object):
+    """
+    An object to hold the information about which library to use
+    """
     def __init__(self, num_library=gmpy2):
         self.libmath = num_library
         #if num_library == np:
