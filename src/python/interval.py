@@ -706,14 +706,14 @@ class Interval(object):
         return Interval( max(self.lo,other.lo), min(self.hi,other.hi) )
 
     def hull(self, other):
-        """Envoltura/casco de dos Intervals"""
+        """Hull of two Intervals"""
         lower = min(self.lo,other.lo)
         upper = max(self.hi,other.hi)
 
         return Interval( lower, upper )
 
     def union(self, other):
-        """Unión de Intervals"""
+        """Union of Intervals"""
         other = self.make_interval(other)
 
         if self._is_empty_intersection(other):
@@ -722,7 +722,8 @@ class Interval(object):
         else:
             return self.hull(other)
 
-    # Algunas funciones escalares de Intervals (ver Tucker)
+    # Scalar functions of Intervals:
+    #
     def diam(self):
         return self.hi - self.lo
 
@@ -733,11 +734,11 @@ class Interval(object):
         return 0.5*( self.lo + self.hi )
 
     def mag(self):
-        """Distancia máxima (magnitude) al origen"""
+        """Maximum distance to the origin (magnitude)."""
         return max( abs(self.lo), abs(self.hi) )
 
     def mig(self):
-        """Distancia mínima (mignitude) al origen"""
+        """Minimum distance to the origin (mignitude)."""
         if 0 in self:
             return 0
         else:
@@ -745,22 +746,22 @@ class Interval(object):
 
     def __abs__(self):
         """
-        Esto define la función abs() de un Interval, cuyo resultado
-        es un Interval (ver Tucker).
-
-        NOTA: La función que regresa la máxima distancia al origen es `self.mag()`
-        (magnitud) y la que regresa la mínima distancia es `self.mig()` ('mignitud').
+        Defines the function abs() for an Interval, whose result is an interval.
         """
         return Interval( self.mig(), self.mag() )
 
     def dist(self, other):
         """
-        Esto define la distancia de Hausdorff entre dos Intervals; ver Tucker.
+        Hausdorff distance between two intervals.
         """
         return max( abs(self.lo-other.lo), abs(self.hi-other.hi) )
 
 
     # convert a number, tuple etc. to an interval if necessary:
+    # with the current implementation, this could be replaced by Interval(a),
+    # which, however, unnecessarily constructs a new interval instead of just reusing the current one,
+    # in the case that a is an interval:
+
     def make_interval(self, a):
         if isinstance(a, Interval):
             return a
@@ -768,9 +769,8 @@ class Interval(object):
         return Interval(a)
 
 
-# Funciones extras
 
-#def make_mpfr(a, rounding=None):
+# def make_mpfr(a, rounding=None):
 #    """This creates a mpfr-number with specified rounding"""
 #
 #    if rounding == "RoundToNearest" or rounding==0 or rounding is None:
