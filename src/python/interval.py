@@ -6,6 +6,7 @@ from global_funcs import *
 ctx = gmpy2.get_context()
 
 class Interval(object):
+
     """
     Represents a one-dimensional interval and sets up the basic operations
     with intervals by overloading the operators +, -, *, / and **.
@@ -36,7 +37,12 @@ class Interval(object):
         self.lo <= self.hi_half
 
         """
-        if b is None:       # single argument
+
+        if isinstance(a, Interval):
+            a, b = a.lo, a.hi
+
+        elif b is None:       # single argument
+
 
             try:
               a, b = a      # try to unpack a (check if it's a tuple etc.)
@@ -74,20 +80,22 @@ class Interval(object):
     # Formatting functions:
     #
     def __repr__(self):
-        return "Interval[{}, {}]".format(repr(self.lo),repr(self.hi))
+        return "Interval[{}, {}]".format(self.lo, self.hi)
+        #return "Interval[{}, {}]".format(repr(self.lo), repr(self.hi))
+
 
     def __str__(self):
-        return "[{},{}]".format(repr(self.lo),repr(self.hi))
+        return "[{},{}]".format(self.lo, self.hi)
 
     # Special formatting functions for the IPython Notebook:
     #
     def _repr_html_(self):
-        reprn = "Interval[{}, {}]".format(repr(self.lo),repr(self.hi))
+        reprn = "Interval[{}, {}]".format(self.lo, self.hi)
         reprn = reprn.replace("inf", r"&infin;")
         return reprn
 
     def _repr_latex_(self):
-        return "$[{}, {}]$".format(repr(self.lo),repr(self.hi))
+        return "$[{}, {}]$".format(self.lo, self.hi)
 
 
     # Arithmetic operations etc.
@@ -690,7 +698,7 @@ class Interval(object):
             print ("Intersection is empty:\n"
                    "Intervals {} and {} are disjoint".format(self,other) )
             return
-            
+
         return Interval( max(self.lo,other.lo), min(self.hi,other.hi) )
 
     def hull(self, other):
