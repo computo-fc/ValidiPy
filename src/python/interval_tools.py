@@ -56,7 +56,7 @@ def plot_interval_f( fun, x, pow2=0, num_points=101 ):
 
         # Se divide los subIntervale en 2**num subIntervals iguales
         subdivided_intervals = split_interval( x, num )
-        # Se calculan las extensiones de la función sobre el Interval, usando los subIntervals
+        # Se calculan las extensiones de la funcion sobre el Interval, usando los subIntervals
         rango_total = range_interval_f( fun, subdivided_intervals )
         print "Rango_tot (N={}) = {}".format(num,rango_total)
 
