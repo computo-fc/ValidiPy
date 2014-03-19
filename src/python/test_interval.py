@@ -4,6 +4,7 @@
 # nosetests finds tests with name "test_..."
 
 from interval import *
+from interval_tools import *
 import numpy as np
 
 # Allow errors using `raise`:

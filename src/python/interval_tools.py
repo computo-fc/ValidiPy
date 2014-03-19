@@ -22,7 +22,7 @@ def split_interval( x, num_divisions=1 ):
 
     edge_points = np.linspace(x.lo, x.hi, num_divisions+1)
     splited_intervals = [Interval(a, b) for (a,b) in
-                         zip(edge_points[0:num_divisions+1],edge_points[1:num_divisions+2]) ]
+                         zip(edge_points[0:num_divisions+1], edge_points[1:num_divisions+2]) ]
 
     return splited_intervals
 
