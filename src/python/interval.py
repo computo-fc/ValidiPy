@@ -753,9 +753,6 @@ class Interval(object):
         """
         return Interval( self.mig(), self.mag() )
 
-    def abs(self):
-        return abs(self)
-
     def dist(self, other):
         """
         Esto define la distancia de Hausdorff entre dos Intervals; ver Tucker.
