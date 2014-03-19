@@ -8,7 +8,6 @@ import gmpy2
 from gmpy2 import mpz, mpq, mpfr#, mpc
 from gmpy2 import RoundDown, RoundUp
 
-from matplotlib import pyplot as plt
 import numpy as np
 
 class MemGlobal(object):
