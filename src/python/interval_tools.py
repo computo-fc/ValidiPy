@@ -75,5 +75,5 @@ def plot_interval_f( fun, x, pow2=0, num_points=101 ):
     low = float(x.lo)
     high = float(x.hi)
     xx = np.linspace(low,high,num_points)
-    yy = fun(xx)
+    yy = [fun(x) for x in xx]
     plt.plot( xx, yy, 'red')
