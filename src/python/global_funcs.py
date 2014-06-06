@@ -6,7 +6,7 @@
 
 import gmpy2
 from gmpy2 import mpz, mpq, mpfr#, mpc
-from gmpy2 import RoundDown, RoundUp
+from gmpy2 import RoundDown, RoundUp, RoundToNearest
 
 import numpy as np
 
