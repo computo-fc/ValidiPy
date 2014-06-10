@@ -636,7 +636,7 @@ class Interval(object):
         ctx.round = RoundUp
         tan_xhi = tan( xhig )
 
-        if lo_half > hi_half or ( lo_half == hi_half and lo_modpi < hi_modpi):
+        if lo_half > hi_half or ( lo_half == hi_half and lo_modpi <= hi_modpi):
             return Interval( tan_xlo, tan_xhi )
 
         else:
