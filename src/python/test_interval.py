@@ -87,3 +87,5 @@ def test_sin_cos_tan():
 
     assert tan(Interval(0.5)) == Interval(mpfr('0.54630248984379048'), mpfr('0.5463024898437906'))
     assert tan(Interval(0.5,1.67)) == Interval(mpfr('-inf'), mpfr('inf'))
+    assert tan(Interval(1.67,3.2)) == Interval(mpfr('-10.047182299210307'), mpfr('0.058473854459578652'))
+
