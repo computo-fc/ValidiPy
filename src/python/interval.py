@@ -5,6 +5,9 @@ from global_funcs import *
 
 ctx = gmpy2.get_context()
 
+def set_interval_precision(precision):
+    gmpy2.get_context().precision = precision
+
 class Interval(object):
 
     """
