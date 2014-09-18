@@ -46,23 +46,18 @@ class Interval(object):
 
         elif b is None:       # single argument
 
-
             try:
               a, b = a      # try to unpack a (check if it's a tuple etc.)
 
             except:
                 b = a       # else create a thin interval
 
-        elif (b < a):       # limits "wrong way round"
+        elif (b < a):         # limits "wrong way round"
 
             a, b = b, a
 
-            # (Note that this is *not* the right approach for so-called "extended IA"
-            # in which inverted intervals represent *excluded* intervals)
 
-
-
-        # If using arbitrary precision, convert the types if necessary:
+        # If using arbitrary precision, convert the types as necessary:
 
         if not isinstance(a, mpfr_type) and mem.libmath==gmpy2:
             # maybe more elegant to use contexts, but the code is perhaps less clear
@@ -76,6 +71,8 @@ class Interval(object):
             #    b = mpfr( str(b) )
             ctx.round = RoundUp
             b = mpfr( str(b) )
+
+        ctx.round = RoundToNearest
 
         self.lo, self.hi = a, b
 
@@ -117,6 +114,7 @@ class Interval(object):
         return Interval( lower, upper )
 
     def __radd__(self, other):
+        other = self.make_interval(other)
         return self + other
 
 
@@ -134,7 +132,8 @@ class Interval(object):
         return Interval( lower, upper )
 
     def __rsub__(self, other):
-        return -(self - other)
+        other = self.make_interval(other)
+        return other - self
 
 
     def __pos__(self):
@@ -153,49 +152,49 @@ class Interval(object):
         """
 
         other = self.make_interval(other)
-        return self._mult3(other)
+        return self._mult(other)
 
     def __rmul__(self, other):
+        other = self.make_interval(other)
         return self * other
 
+    # def _mult1(self,other):
+    #     """ Naive multiplication; does not yet have directed rounding """
 
-    def _mult1(self,other):
-        """ Naive multiplication; does not yet have directed rounding """
+    #     S = [ self.lo*other.lo, self.lo*other.hi,
+    #           self.hi*other.lo, self.hi*other.hi ]
+    #     return Interval( min(S), max(S) )
 
-        S = [ self.lo*other.lo, self.lo*other.hi,
-              self.hi*other.lo, self.hi*other.hi ]
-        return Interval( min(S), max(S) )
+    # def _mult2(self,other):
+    #     """
+    #     Multiplication algorithm considering explicitly the nine possible cases
+    #     (No directed rounding)
+    #     """
+    #     if (self.lo >= 0.0 and other.lo >= 0.0):
+    #         return Interval( self.lo*other.lo, self.hi*other.hi )
+    #     elif (self.hi < 0.0 and other.hi < 0.0):
+    #         return Interval( self.hi*other.hi, self.lo*other.lo )
+    #     elif (self.lo >= 0.0 and other.hi < 0.0):
+    #         return Interval( self.lo*other.hi, self.hi*other.lo )
+    #     elif (self.hi < 0.0 and other.lo >= 0.0):
+    #         return Interval( self.hi*other.lo, self.lo*other.hi )
+    #     elif (self.lo >= 0.0 and other.lo*other.hi < 0.0):
+    #         return Interval( self.hi*other.lo, self.hi*other.hi )
+    #     elif (self.hi < 0.0 and other.lo*other.hi < 0.0):
+    #         return Interval( self.lo*other.hi, self.lo*other.lo )
+    #     elif (other.lo >= 0.0 and self.lo*self.hi < 0.0):
+    #         return Interval( self.lo*other.hi, self.hi*other.hi )
+    #     elif (other.hi < 0.0 and self.lo*self.hi < 0.0):
+    #         return Interval( self.hi*other.lo, self.lo*other.lo )
 
-    def _mult2(self,other):
-        """
-        Multiplication algorithm considering explicitly the nine possible cases
-        (No directed rounding)
-        """
-        if (self.lo >= 0.0 and other.lo >= 0.0):
-            return Interval( self.lo*other.lo, self.hi*other.hi )
-        elif (self.hi < 0.0 and other.hi < 0.0):
-            return Interval( self.hi*other.hi, self.lo*other.lo )
-        elif (self.lo >= 0.0 and other.hi < 0.0):
-            return Interval( self.lo*other.hi, self.hi*other.lo )
-        elif (self.hi < 0.0 and other.lo >= 0.0):
-            return Interval( self.hi*other.lo, self.lo*other.hi )
-        elif (self.lo >= 0.0 and other.lo*other.hi < 0.0):
-            return Interval( self.hi*other.lo, self.hi*other.hi )
-        elif (self.hi < 0.0 and other.lo*other.hi < 0.0):
-            return Interval( self.lo*other.hi, self.lo*other.lo )
-        elif (other.lo >= 0.0 and self.lo*self.hi < 0.0):
-            return Interval( self.lo*other.hi, self.hi*other.hi )
-        elif (other.hi < 0.0 and self.lo*self.hi < 0.0):
-            return Interval( self.hi*other.lo, self.lo*other.lo )
+    #     else:
+    #         #(self.lo*self.hi < 0.0 and other.lo*other.hi < 0.0):
+    #         S1 = [ self.lo*other.lo, self.hi*other.hi ]
+    #         S2 = [ self.hi*other.lo, self.lo*other.hi ]
+    #         return Interval( min(S2), max(S1) )
 
-        else:
-            #(self.lo*self.hi < 0.0 and other.lo*other.hi < 0.0):
-            S1 = [ self.lo*other.lo, self.hi*other.hi ]
-            S2 = [ self.hi*other.lo, self.lo*other.hi ]
-            return Interval( min(S2), max(S1) )
-
-    def _mult3(self,other):
-        """ Naive multiplication with directed rounding """
+    def _mult(self,other):
+        """ Naive multiplication with direct rounding """
 
         ctx.round = RoundDown
         S_lower = [ self.lo*other.lo, self.lo*other.hi, self.hi*other.lo, self.hi*other.hi ]
@@ -221,8 +220,8 @@ class Interval(object):
                    " we need to implement extended intervals!" )
 
     def __rdiv__(self, other):
-        # Esto se encarga de cosas tipo numero/Interval; self es el Interval
-        return (self / other).reciprocal()
+        other = self.make_interval(other)
+        return other / self
 
 
     def reciprocal(self):
@@ -274,6 +273,97 @@ class Interval(object):
 
     # Elementary mathematical functions: pow, rpow, abs, sin, cos, exp, etc.
     #
+    def __pow__(self, exponent):
+        """
+        Power -- implements the `**` operator
+        """
+
+        if 0 > self:
+            if not exponent == int(exponent):  # noninteger exponent not allowed
+                print ("Negative intervals cannot be raised to a fractional power")
+                return  # Should throw error
+
+        inf = calc_inf()
+        naturalDomain = Interval(0, inf)
+        intervalRestricted = self.intersection( naturalDomain )
+
+        if isinstance( exponent, Interval ):   # exponent is an interval
+            if exponent.diam() == 0:
+                return self**(exponent.lo)
+
+            ctx.round = RoundDown
+            lolo = intervalRestricted.lo**(exponent.lo)
+            lohi = intervalRestricted.lo**(exponent.hi)
+            lower = min( lolo, lohi)
+
+            ctx.round = RoundUp
+            hilo = intervalRestricted.hi**(exponent.lo)
+            hihi = intervalRestricted.hi**(exponent.hi)
+            upper = max( hilo, hihi)
+
+            return( Interval( lower, upper ) )
+
+        if exponent == int(exponent):    # exponent is an integer
+            if exponent >= 0:
+                if exponent%2 == 0:     # even exponent
+                    ctx.round = RoundDown
+                    lower = (self.mig())**exponent
+
+                    ctx.round = RoundUp
+                    upper = (self.mag())**exponent
+                    return Interval( lower, upper )
+
+                else:                # odd exponent
+                    ctx.round = RoundDown
+                    lower = self.lo**exponent
+
+                    ctx.round = RoundUp
+                    upper = self.hi**exponent
+                    return Interval( lower, upper )
+
+            else:   # exponent < 0
+                result = self**(-exponent)
+                return result.reciprocal()
+
+        else:  # exponent is a generic float
+
+            if exponent >= 0:
+                if 0 in self:
+                    print "\nWARNING: Interval {} contains 0.\n".format(self)
+
+                    print ("Restricting to the intersection to the natural domain of **, "
+                           "i.e. {}\n".format(intervalRestricted) )
+
+                    ctx.round = RoundDown
+                    lower = mpfr( '0.0' )**exponent
+
+                    ctx.round = RoundUp
+                    upper = self.hi**exponent
+
+                    return Interval( lower, upper )
+
+                elif 0 > self:
+                    print ("Negative intervals cannot be raised to a fractional power")
+
+                else:
+                    ctx.round = RoundDown
+                    lower = min( self.lo**exponent, self.hi**exponent )
+
+                    ctx.round = RoundUp
+                    upper = max( self.lo**exponent, self.hi**exponent )
+
+                    return Interval( lower, upper )
+
+            else:
+                result = self**(-exponent)
+                return result.reciprocal()
+
+
+    def __rpow__(self,exponent):
+        exponent = self.make_interval(exponent)
+        return exponent**self
+
+
     def exp(self):
         """
         Exponential
@@ -367,93 +457,6 @@ class Interval(object):
 
             return Interval( lower, upper )
 
-
-
-    def __pow__(self, exponent):
-        """
-        Power -- implements the `**` operator
-        """
-        inf = calc_inf()
-
-        if self > 0:        # not wholly negative
-
-            exponent = self.make_interval(exponent)
-            return( exp(exponent * log(self)) )   # seems to work! EXCEPT for pure negative intervals
-
-
-        elif 0 > self:
-            if not exponent == int(exponent):  # noninteger exponent not allowed
-                print ("Negative intervals cannot be raised to a fractional power")
-                return  # Should throw error
-
-
-        #
-        #
-        # if isinstance( exponent, Interval ):
-        #     # here exponent is an interval
-        #
-        #     return( exp(exponent * log(self)) )
-
-
-        if exponent == int(exponent):    # exponent is an integer
-            if exponent >= 0:
-                if exponent%2 == 0:     # even exponent
-                    ctx.round = RoundDown
-                    lower = (self.mig())**exponent
-
-                    ctx.round = RoundUp
-                    upper = (self.mag())**exponent
-                    return Interval( lower, upper )
-
-                else:                # odd exponent
-                    ctx.round = RoundDown
-                    lower = self.lo**exponent
-
-                    ctx.round = RoundUp
-                    upper = self.hi**exponent
-                    return Interval( lower, upper )
-
-            else:   # exponent < 0
-                result = self**(-exponent)
-                return result.reciprocal()
-
-        else:  # exponent is a generic float
-            naturalDomain = Interval(0, inf)
-            if exponent >= 0:
-                if 0 in self:
-                    intervalRestricted = self.intersection( naturalDomain )
-
-                    print "\nWARNING: Interval {} contains 0.\n".format(self)
-
-                    print ("Restricting to the intersection to the natural domain of **, "
-                           "i.e. {}\n".format(intervalRestricted) )
-
-                    ctx.round = RoundDown
-                    lower = mpfr( '0.0' )**exponent
-
-                    ctx.round = RoundUp
-                    upper = elf.hi**exponent
-
-                    return Interval( lower, upper )
-
-                elif 0 > self:
-                    print ("Negative intervals cannot be raised to a fractional power")
-
-                else:
-                    ctx.round = RoundDown
-                    lower = min( self.lo**exponent, self.hi**exponent )
-
-                    ctx.round = RoundUp
-                    upper = max( self.lo**exponent, self.hi**exponent )
-
-                    return Interval( lower, upper )
-
-            else:
-                result = self**(-exponent)
-                return result.reciprocal()
-
-    def __rpow__(self,exponent):
-        return Interval(exponent)**self
 
 
     def sin(self):
@@ -636,7 +639,7 @@ class Interval(object):
         ctx.round = RoundUp
         tan_xhi = tan( xhig )
 
-        if lo_half > hi_half or ( lo_half == hi_half and lo_modpi < hi_modpi):
+        if lo_half > hi_half or ( lo_half == hi_half and lo_modpi <= hi_modpi):
             return Interval( tan_xlo, tan_xhi )
 
         else:

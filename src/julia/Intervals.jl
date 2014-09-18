@@ -1,6 +1,6 @@
 ## Intervals.jl
 ##
-## Last modification: 2014.04.10
+## Last modification: 2014.06.09
 ## Luis Benet and David P. Sanders, UNAM
 ##
 ## Julia module for handling Interval arithmetics
@@ -8,10 +8,10 @@
 
 module Intervals
 
-import 
-    Base: in, zero, one, show, 
-        sqrt, exp, log, sin, cos, tan, 
-        union, intersect, isempty
+import Base: in, zero, one, show, 
+    sqrt, exp, log, sin, cos, tan, inv, 
+    union, intersect, isempty,
+    convert, promote_rule
 
 export 
     @roundingDown, @roundingUp, @roundingDirect, @rounded_interval,
@@ -40,7 +40,7 @@ macro roundingUp(expr)
 end
 
 ## Interval constructor
-immutable Interval <: Real
+immutable Interval <: Number
     lo :: Real
     hi :: Real
 
@@ -58,7 +58,6 @@ immutable Interval <: Real
         elseif T == Rational{Int64} || T == Rational{BigInt} || T == Rational{Int32}
             lo = @roundingDown( BigFloat(a) )
         else
-            #lo = BigFloat(string(a), RoundDown)
             lo = @roundingDown( BigFloat(string(a)) )
         end
 
@@ -68,7 +67,6 @@ immutable Interval <: Real
         elseif T == Rational{Int64} || T == Rational{BigInt} || T == Rational{Int32}
             hi = @roundingUp( BigFloat(b) )
         else
-            #hi = BigFloat(string(b), RoundUp)
             hi = @roundingUp( BigFloat(string(b)) )
         end
 
@@ -76,32 +74,27 @@ immutable Interval <: Real
     end
 end
 Interval(a::Interval) = a
-Interval(a::Tuple) = Interval(a[1], a[2])
-#?Interval(a::BigFloat) = Interval( @roundingDown("$a"), @roundingUp("$a") )
-Interval(b::Bool) = Interval(int(b))   ## Included because a warning: Bool <: Real --> true
+Interval(a::Tuple) = Interval(a...)
 Interval(a::Real) = Interval(a, a)
+
+# Convertion and promotion
+convert(::Type{Interval},x::Real) = Interval(x)
+promote_rule{A<:Real}(::Type{Interval}, ::Type{A}) = Interval
 
 ## Equalities and neg-equalities
 ==(a::Interval, b::Interval) = a.lo == b.lo && a.hi == b.hi
-==(a::Interval, x::Real) = ==(a, Interval(x))
-==(x::Real, a::Interval) = ==(a, Interval(x))
 !=(a::Interval, b::Interval) = a.lo != b.lo || a.hi != b.hi
-!=(a::Interval, x::Real) = !=(a, Interval(x))
-!=(x::Real, a::Interval) = !=(a, Interval(x))
 
 ## Inclusion/containment functions
 in(a::Interval, b::Interval) = b.lo <= a.lo && a.hi <= b.hi
-in(x::Rational, a::Interval) = a.lo <= BigFloat(x) <= a.hi
-in(x::BigFloat, a::Interval) = a.lo <= x <= a.hi
-in(x::Real, a::Interval) = a.lo <= BigFloat(string(x)) <= a.hi
+in(x::Real, a::Interval) = in(promote(x,a)...)
+
 isinside(a::Interval, b::Interval) = b.lo < a.lo && a.hi < b.hi
-isinside(x::Rational, a::Interval) = a.lo < BigFloat(x) < a.hi
-isinside(x::BigFloat, a::Interval) = a.lo < x < a.hi
-isinside(x::Real, a::Interval) = a.lo < BigFloat(string(x)) < a.hi
+isinside(x::Real, a::Interval) = isinside(promote(x,a)...)
 
 ## zero and one functions
-zero(a::Interval) = Interval(BigFloat("0"))
-one(a::Interval) = Interval(BigFloat("1"))
+zero(a::Interval) = Interval(zero(BigFloat))
+one(a::Interval) = Interval(one(BigFloat))
 
 ## Addition
 function +(a::Interval, b::Interval)
@@ -112,7 +105,6 @@ function +(a::Interval, b::Interval)
     set_rounding(BigFloat, RoundNearest)
     Interval( lo, hi )
 end
-#?+(a::Interval, b::Interval) = @rounded_interval( a.lo+b.lo, a.hi+b.hi )
 +(a::Interval) = a
 
 ## Substraction
@@ -124,7 +116,6 @@ function -(a::Interval, b::Interval)
     set_rounding(BigFloat, RoundNearest)
     Interval( lo, hi )
 end
-#?-(a::Interval, b::Interval) = @rounded_interval( a.lo-b.hi, a.hi-b.lo )
 -(a::Interval) = Interval(-a.hi,-a.lo)
 
 ## Multiplication
@@ -135,15 +126,6 @@ function *(a::Interval, b::Interval)
     hi = max( a.lo*b.lo, a.lo*b.hi, a.hi*b.lo, a.hi*b.hi )
     set_rounding(BigFloat, RoundNearest)
     Interval( lo, hi )
-end
-# The following is needed because to avoid a silly warning
-*(a::Interval, b::Bool) = b ? a : zero(a)
-*(b::Bool, a::Interval) = b ? a : zero(a)
-
-## Operations mixing Interval and Real
-for op in (:+, :-, :*)
-    @eval $(op)(a::Interval, x::Real) = $(op)(a, Interval(x))
-    @eval $(op)(x::Real, a::Interval) = $(op)(Interval(x), a)
 end
 
 ## Division
@@ -161,11 +143,10 @@ function reciprocal(a::Interval)
     set_rounding(BigFloat, RoundNearest)
     Interval( lo, hi )
 end
+inv(a::Interval) = reciprocal(a)
 /(a::Interval, b::Interval) = a*reciprocal(b)
-/(a::Interval, x::Real) = a*reciprocal( Interval(x) )
-/(x::Real, a::Interval) = Interval(x)*reciprocal(a)
 
-## Some scalar functions on intervals
+## Some scalar functions on intervals; no direct rounding used
 diam(a::Interval) = a.hi - a.lo
 mid(a::Interval) = BigFloat(0.5) * (a.hi + a.lo)
 mag(a::Interval) = max( abs(a.lo), abs(a.hi) )
@@ -173,7 +154,6 @@ mig(a::Interval) = in(BigFloat(0.0),a) ? BigFloat(0.0) : min( abs(a.lo), abs(a.h
 
 ## Intersection
 isempty(a::Interval, b::Interval) = a.hi < b.lo || b.hi < a.lo
-#?isempty(a::Interval, x::Real) = isempty(a, Interval(x))
 function intersect(a::Interval, b::Interval)
     if isempty(a,b)
         warn("Intersection is empty")
@@ -198,18 +178,19 @@ function hull(a::Interval, b::Interval)
     set_rounding(BigFloat, RoundNearest)
     Interval( lo, hi )
 end
-hull(a::Interval, x::Real) = hull(a, Interval(x))
-hull(x::Real, a::Interval) = hull(a, Interval(x))
 
 ## union
 function union(a::Interval, b::Interval)
     isempty(a,b) && warn("Empty intersection; union is computed as hull")
     hull(a,b)
 end
-union(a::Interval, x::Real) = union(a, Interval(x))
-union(x::Real, a::Interval) = union(Interval(x), a)
 
-#----- From here on, NEEDS TESTING ------
+## Extending operators that mix Interval and Real
+for fn in (:intersect, :hull, :union)
+    @eval $(fn)(a::Interval, x::Real) = $(fn)(promote(a,x)...)
+    @eval $(fn)(x::Real, a::Interval) = $(fn)(promote(x,a)...)
+end
+
 ## Int power
 function ^(a::Interval, n::Integer)
     n < zero(n) && return reciprocal( a^(-n) )
@@ -270,26 +251,28 @@ function ^(a::Interval, x::Interval)
     # Is x a thin interval?
     diam( x ) < eps( mid(x) ) && return a^(x.lo)
     z = zero(BigFloat)
-    z > a.hi && error("Undefined operation; Interval is strictly negative and power is not an integer")
+    z > a.hi && error("Undefined operation;\n",
+        "Interval is strictly negative and power is not an integer")
     #
     domainPow = Interval(z, inf(BigFloat))
     aRestricted = intersect(a, domainPow)
     set_rounding(BigFloat, RoundDown)
-    lolo = aRestricted.lo^x.lo
-    lohi = aRestricted.lo^x.hi
+    lolo = aRestricted.lo^(x.lo)
+    lohi = aRestricted.lo^(x.hi)
     set_rounding(BigFloat, RoundUp)
-    hilo = aRestricted.hi^x.lo
-    hihi = aRestricted.hi^x.hi
+    hilo = aRestricted.hi^(x.lo)
+    hihi = aRestricted.hi^(x.hi)
     set_rounding(BigFloat, RoundNearest)
-    lo = min( lolo, lohi)
-    hi = min( hilo, hihi)
+    lo = min( lolo, lohi )
+    hi = min( hilo, hihi )
     Interval( lo, hi )
 end
 
 ## sqrt
 function sqrt(a::Interval)
     z = zero(BigFloat)
-    z > a.hi && error("Undefined operation; Interval is strictly negative and power is not an integer")
+    z > a.hi && error("Undefined operation;\n", 
+        "Interval is strictly negative and power is not an integer")
     #
     domainSqrt = Interval(z, inf(BigFloat))
     aRestricted = intersect(a, domainSqrt)
@@ -326,6 +309,7 @@ function log(a::Interval)
     Interval( lo, hi )
 end
 
+#----- From here on, NEEDS TESTING ------
 ## sin
 function sin(a::Interval)
     piHalf = pi*BigFloat("0.5")
@@ -469,13 +453,13 @@ function tan(a::Interval)
     hi = tan( a.hi )
     set_rounding(BigFloat, RoundNearest)
     
-    if (loHalf > hiHalf) || ( loHalf == hiHalf && lo_modpi < hi_modpi) 
+    if (loHalf > hiHalf) || ( loHalf == hiHalf && loModpi <= hiModpi)
         return Interval( lo, hi )
     end
 
-    disjoint2 = Interval( tan_xlo, BigFloat(Inf) )
-    disjoint1 = Interval( BigFloat(-Inf), tan_xhi )
-    info(string("\n The resulting interval is disjoint:\n", disjoint1, disjoint2,
+    disjoint2 = Interval( lo, BigFloat(Inf) )
+    disjoint1 = Interval( BigFloat(-Inf), hi )
+    info(string("The resulting interval is disjoint:\n", disjoint1, "\n", disjoint2,
         "\n The hull of the disjoint subintervals is considered:\n", domainTan))
     return domainTan
 end

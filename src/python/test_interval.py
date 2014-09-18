@@ -10,97 +10,82 @@ import numpy as np
 # Allow errors using `raise`:
 from nose.tools import *
 
-def test_addition():
+a = Interval(1.1,0.1)
+b = Interval(0.9,2.0)
+c = Interval(0.25,4.0)
+inf = calc_inf()
 
-    for i in range(51):
-        a = random_interval()
-        b = random_interval()
-        #
-        num1a, num2a = a.lo, a.hi
-        num1b, num2b = b.lo, b.hi
-        num3 = np.random.uniform( -10.0, 10.0 )
-        num3 = mpf( num3 )
-        #
-        c1 = a + b
-        c2 = a + num3
-        c3 = num3 + b
-        print num1a+num3, num2a+num3
-        assert c1.lo == num1a+num1b and c1.hi == num2a+num2b
-        assert c2.lo == num1a+num3 and c2.hi == num2a+num3
-        assert c3.lo == num1b+num3 and c3.hi == num2b+num3
-    #
+def test_instances():
+    assert isinstance(a, Interval)
+    assert isinstance(Interval(mpfr("0.1")), Interval)
 
+def test_equalities():
+    assert Interval(0.25)-1.0/4 == Interval(0)
+    assert not(a == b)
+    assert a != b
+    assert a == Interval(a.lo,a.hi)
+    assert Interval(0.1) == Interval(0.0999999999999999999,0.1)
+    assert Interval(0).reciprocal() == Interval(inf,inf)
+    assert Interval(0,1).reciprocal() == Interval(1,inf)
+    assert Interval(1,inf).reciprocal() == Interval(0,1)
+    assert c.reciprocal() == c
+    assert 1/b == b.reciprocal()
+    assert a.intersection( b.hull(a)) == a
 
-@raises(ValueError)
+def test_add_sub_mul_div():
+    assert a+b == Interval(mpfr('0.99999999999999989'),mpfr('3.1'))
+    assert -a == Interval(-1.1,-0.0999999999999999999)
+    assert a-b == Interval(mpfr("-1.9000000000000001e+00"), mpfr("2.0000000000000018e-01"))
+    assert a*b == Interval(a.lo*b.lo, a.hi*b.hi)
+    assert 10*a == Interval(mpfr("9.9999999999999989e-01"), mpfr("1.1000000000000002e+01"))
+    assert b/a == Interval(mpfr("8.181818181818179e-01"), mpfr("2.0000000000000004e+01"))
+    assert a/c == Interval(mpfr("0.024999999999999998"),mpfr("4.4"))
+    assert c/4.0 == Interval(0.0625,1.0)
+    assert Interval.reciprocal(Interval(0)) == Interval(mpfr('inf'), mpfr('inf'))
+    assert Interval.reciprocal(Interval(0,1)) == Interval(1,mpfr('inf'))
+    assert Interval.reciprocal(Interval(1,mpfr('inf'))) == Interval(0,1)
+    assert Interval.reciprocal(c) == c
+    assert 1/b == Interval.reciprocal(b)
+    assert 0.1 in Interval(0.1)
+    assert not(Interval.strictly_contains(Interval(0.1), 0.1))
+
+def test_mig_mag():
+    assert 0.1 in Interval(0.1)
+    assert (Interval(-2,2)).mig() == 0.0
+    assert (-b).mag() == b.hi
+    assert a.diam() == a.hi - a.lo
+
 def test_pow():
+    assert Interval(-3,2)**2 == Interval(mpfr('0.0'), mpfr('9.0'))
+    assert Interval(-3,2)**3 == Interval(mpfr('-27.0'), mpfr('8.0'))
+    assert Interval(-3,4)**0.5 == Interval(mpfr('0.0'), mpfr('2.0'))
+    assert Interval(1,27)**(1.0/3) == Interval(1,3)
+    assert Interval(-3,2)**Interval(2) == Interval(mpfr('0.0'), mpfr('9.0'))
+    assert Interval(-3,4)**Interval(0.5) == Interval(-3,4)**0.5 == Interval(0, 2)
+    assert Interval(0.1,0.7)**(1.0/3) == Interval(mpfr('0.46415888336127786'), mpfr('0.88790400174260076'))
 
-    for i in range(51):
-        # a.lo < 0 and a.hi > 0
-        a = random_interval()
-        num1a, num2a = -abs(a.lo), abs(a.hi)
-        num_min = min( -num1a, num2a )
-        num_max = a.mag()
-        a = Interval( num1a, num2a )
-        #
-        # Test even power
-        b = a**2
-        assert b.lo == 0 and b.hi == num_max**2
-        c = a**Interval(2.0)
-        assert c.lo == 0 and c.hi == num_max**2.0
-        #
-        # Test odd power
-        b = a**3
-        assert b.lo == num1a**3 and b.hi == num2a**3
-        c = a**Interval(3)
-        assert b == c
-        #
-        ## Test fractional power, with a.lo < 0
-        b = a**2.5
-        assert b.lo == 0 and b.hi == a.hi**2.5
-        #
-        # Test: a.lo < 0, a.hi > 0 and power is an interval
-        a = Interval( -num_min, num_max )
-        b = random_interval()
-        c = a**b
-        if 0 > b.hi:
-            assert c.lo == mp.exp( b.lo*mp.log(a.hi) ) and c.hi == mpf('+inf')
-        elif 0 < b.lo:
-            assert c.lo == 0 and c.hi == mp.exp( b.hi*mp.log(a.hi) )
-        elif 0 >= b.lo and 0 <= b.hi:
-            assert c.lo == 0 and c.hi == mpf('+inf')
-        #
-        # Test fractional power, with a.lo > 0
-        a = Interval( num_min, num_max )
-        alfa = 1.0/3.0
-        beta = 1.0/alfa
-        b = a**alfa
-        assert b.lo == num_min**alfa and b.hi == num_max**alfa
-        c = b**beta
-        assert c.lo == b.lo**beta and c.hi == b.hi**beta
-        ## OJO
-        # El siguiente test NO funciona, por errores de redondeo
-        #assert c == a
-        #
-        # Test: error with negative interval and fractional power
-        a = -a
-        c = a**2.5
-        raise ValueError("Lanzar este error es ok")
-    #
+def test_exp_log():
+    assert exp(Interval(0.5)) == Interval(mpfr('1.648721270700128'), mpfr('1.6487212707001282'))
+    assert exp(Interval(0.1)) == Interval(mpfr('1.1051709180756475'), mpfr('1.1051709180756477'))
+    assert log(Interval(0.5)) == Interval(mpfr('-6.931471805599454e-01'), mpfr('-6.9314718055994529e-01'))
+    assert log(Interval(0.1)) == Interval(mpfr('-2.3025850929940459e+00'), mpfr('-2.3025850929940455e+00'))
 
+def test_sin_cos_tan():
+    assert sin(Interval(0.5)) == Interval(mpfr('0.47942553860420295'), mpfr('0.47942553860420301'))
+    assert sin(Interval(0.5,1.67)) == Interval(mpfr('0.47942553860420295'), mpfr('1.0'))
+    assert sin(Interval(2.1, 5.6)) == Interval(mpfr('-1.0'), mpfr('0.86320936664887404'))
+    assert sin(Interval(0.5,8.5)) == Interval(-1.0, 1.0)
+    # The following does not correspond to the result of julia
+    #?assert sin(Interval(1.67,3.2)) == Interval(mpfr('-0.058374143427580093'), mpfr('0.99508334981018021'))
+    assert sin(Interval(1.67,3.2)) == Interval(mpfr('-0.058374143427580086'), mpfr('0.9950833498101801'))
 
-@raises(ValueError)
-def test_log():
+    assert cos(Interval(0.5)) == Interval(mpfr('0.87758256189037265'), mpfr('0.87758256189037276'))
+    assert cos(Interval(0.5,1.67)) == Interval(mpfr('-0.099041036598728246'), mpfr('0.87758256189037276'))
+    assert cos(Interval(2.1, 5.6)) == Interval(mpfr('-1.0'), mpfr('0.77556587851025016'))
+    assert cos(Interval(0.5,8.5)) == Interval(mpfr('-1.0'), mpfr('1.0'))
+    assert cos(Interval(1.67,3.2)) == Interval(mpfr('-1.0'), mpfr('-0.099041036598728011'))
 
-    for i in range(51):
-        a = random_interval()
-        b = a.log()
-        #
-        if 0 in a:
-            assert b.lo == mpf('-inf') and b.hi == mp.log(a.hi)
-        #
-        elif 0 < a.lo:
-            assert b.lo == mp.log(a.lo) and b.hi == mp.log(a.hi)
-        #
-        elif 0 > a.hi:
-            raise ValueError("Lanzar este error es ok")
-    #
+    assert tan(Interval(0.5)) == Interval(mpfr('0.54630248984379048'), mpfr('0.5463024898437906'))
+    assert tan(Interval(0.5,1.67)) == Interval(mpfr('-inf'), mpfr('inf'))
+    assert tan(Interval(1.67,3.2)) == Interval(mpfr('-10.047182299210307'), mpfr('0.058473854459578652'))
+
